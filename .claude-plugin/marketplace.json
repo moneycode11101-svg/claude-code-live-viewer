@@ -3,6 +3,6 @@
   "owner": { "name": "moneycode11101-svg", "url": "https://github.com/moneycode11101-svg" },
   "description": "Live viewer for Claude Code: a side-pane tab that shows tool calls as Claude writes them.",
   "plugins": [
-    { "name": "live-viewer", "source": "./", "description": "Watch Claude's tool calls live in a side-pane tab." }
+    { "name": "live-viewer", "source": "./skills/live-viewer", "description": "Watch Claude's tool calls live in a side-pane tab." }
   ]
 }

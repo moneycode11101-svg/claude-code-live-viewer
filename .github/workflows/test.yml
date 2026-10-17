@@ -16,6 +16,8 @@ jobs:
       - name: Install Claude Code
         run: npm install --global @anthropic-ai/claude-code@2.1.302
       - name: Validate manifests
-        run: claude plugin validate --strict .
+        run: |
+          claude plugin validate --strict .
+          claude plugin validate --strict skills/live-viewer
       - name: Run tests
-        run: claude plugin test .
+        run: claude plugin test skills/live-viewer

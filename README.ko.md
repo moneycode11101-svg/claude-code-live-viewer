@@ -28,15 +28,28 @@ Claude Code는 도구 호출이 완전히 끝난 뒤에야 내용을 보여 줍�
 
 ## 설치
 
-```bash
-claude plugin marketplace add moneycode11101-svg/claude-code-live-viewer
-```
+2026-10-17 `skills` CLI 1.7.2로 확인했습니다.
 
 ```bash
-claude plugin install live-viewer@live-viewer
+npx skills add moneycode11101-svg/claude-code-live-viewer -g -a claude-code
+```
+
+`~/.claude/skills/live-viewer`에 설치됩니다.
+
+`git`으로 설치하려면:
+
+```bash
+git clone https://github.com/moneycode11101-svg/claude-code-live-viewer.git
+cp -R claude-code-live-viewer/skills/live-viewer ~/.claude/skills/
 ```
 
 새 Claude Code 세션을 시작하면 탭이 자동으로 열립니다. 탭을 닫았더라도 `/live`를 입력하면 다시 열립니다. 시스템 로캘이 한국어이거나 시간대가 서울(`Asia/Seoul`)이면 탭 제목과 UI가 한국어(**코딩 뷰어**)로 표시됩니다.
+
+이전 버전을 `claude plugin install`로 설치했다면, 탭이 하나만 열리도록 그 설치를 지웁니다.
+
+```bash
+claude plugin uninstall live-viewer@live-viewer
+```
 
 ## 보이는 것
 
@@ -62,10 +75,10 @@ claude plugin install live-viewer@live-viewer
 
 ## 설정
 
-Claude Code 안에서 `/plugin configure live-viewer@live-viewer`를 실행하거나, 설치할 때 옵션을 지정합니다.
+Claude Code 안에서 `/plugin configure live-viewer@skills-dir`를 실행하거나, 셸에서 값을 넘깁니다. 새 세션부터 적용됩니다.
 
 ```bash
-claude plugin install live-viewer@live-viewer --config palette=dark
+echo '{"palette":"dark"}' | claude plugin configure live-viewer@skills-dir --values-stdin
 ```
 
 | 설정 | 값 | 기본값 |
@@ -87,7 +100,7 @@ claude plugin install live-viewer@live-viewer --config palette=dark
 
 ## 작동 방식
 
-`live-viewer`는 엔진 이벤트를 감지하는 hooks 모듈 기반의 Claude Code mod(플러그인)입니다.
+`live-viewer`는 엔진 이벤트를 감지하는 hooks 모듈 기반의 Claude Code mod(플러그인)입니다. 스킬 폴더 형태로 배포합니다. Claude Code는 `~/.claude/skills` 안에서 `.claude-plugin/plugin.json`이 있는 폴더를 `live-viewer@skills-dir` 플러그인으로 불러오므로 마켓플레이스가 필요 없습니다.
 
 - **`turn.step`**: 모델이 각 단계에서 스트리밍하는 청크(chunk)를 읽습니다. 원본 청크는 그대로 통과시키고, `Write`·`Edit`·`Bash` 입력의 조각난 JSON을 도착하는 대로 실시간 파싱합니다.
 - **`tool.call`**: 호출을 실행 중 상태로 표시하고, 실행이 끝나면 결과를 덧붙입니다. 결과값은 건드리지 않고 그대로 반환합니다.
@@ -98,11 +111,17 @@ Claude의 원래 동작을 막거나 지연시키거나 바꾸지 않습니다. 
 ## 업데이트와 제거
 
 ```bash
-claude plugin update live-viewer@live-viewer
+npx skills update live-viewer -g
 ```
 
 ```bash
-claude plugin uninstall live-viewer@live-viewer
+npx skills remove live-viewer -g
+```
+
+`git`으로 설치했다면 다시 받은 뒤 `~/.claude/skills/live-viewer`를 새 `skills/live-viewer`로 바꾸거나, 아래 명령으로 지웁니다.
+
+```bash
+rm -rf ~/.claude/skills/live-viewer
 ```
 
 ## 개발
@@ -112,18 +131,18 @@ git clone https://github.com/moneycode11101-svg/claude-code-live-viewer.git
 ```
 
 ```bash
-claude plugin validate --strict .
+claude plugin validate --strict skills/live-viewer
 ```
 
 ```bash
-claude plugin test .
+claude plugin test skills/live-viewer
 ```
 
-클론한 폴더에서 `claude --plugin-dir .` 명령으로 Claude Code를 실행하면 로컬 버전을 바로 테스트해 볼 수 있습니다.
+클론한 폴더에서 `claude --plugin-dir skills/live-viewer` 명령으로 Claude Code를 실행하면 로컬 버전을 바로 테스트해 볼 수 있습니다.
 
 ## 출처
 
-상자 레이아웃과 밝은·어두운 팔레트 디자인은 [oh-my-pi](https://github.com/can1357/oh-my-pi)(MIT)를 참고했습니다. 자세한 내용은 [NOTICE](NOTICE)를 확인하세요.
+상자 레이아웃과 밝은·어두운 팔레트 디자인은 [oh-my-pi](https://github.com/can1357/oh-my-pi)(MIT)를 참고했습니다. 자세한 내용은 [NOTICE](skills/live-viewer/NOTICE)를 확인하세요.
 
 ## 라이선스
 

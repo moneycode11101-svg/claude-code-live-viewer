@@ -28,15 +28,28 @@ Claude Code only shows a tool call once it is complete. Until then, a long `Writ
 
 ## Install
 
-```bash
-claude plugin marketplace add moneycode11101-svg/claude-code-live-viewer
-```
+Checked with `skills` CLI 1.7.2 (2026-10-17):
 
 ```bash
-claude plugin install live-viewer@live-viewer
+npx skills add moneycode11101-svg/claude-code-live-viewer -g -a claude-code
+```
+
+This installs it to `~/.claude/skills/live-viewer`.
+
+Or install with `git`:
+
+```bash
+git clone https://github.com/moneycode11101-svg/claude-code-live-viewer.git
+cp -R claude-code-live-viewer/skills/live-viewer ~/.claude/skills/
 ```
 
 Start a new Claude Code session. The **Live viewer** tab opens automatically. If you close it, `/live` brings it back.
+
+If you installed an earlier version with `claude plugin install`, remove it so only one tab opens:
+
+```bash
+claude plugin uninstall live-viewer@live-viewer
+```
 
 ## What you see
 
@@ -62,10 +75,10 @@ When the desktop app has not placed the tab yet, the box for the active call is 
 
 ## Settings
 
-Run `/plugin configure live-viewer@live-viewer` inside Claude Code, or pass options when you install:
+Run `/plugin configure live-viewer@skills-dir` inside Claude Code, or pipe the values from a shell. New sessions pick them up.
 
 ```bash
-claude plugin install live-viewer@live-viewer --config palette=dark
+echo '{"palette":"dark"}' | claude plugin configure live-viewer@skills-dir --values-stdin
 ```
 
 | Setting | Values | Default |
@@ -87,7 +100,7 @@ claude plugin install live-viewer@live-viewer --config palette=dark
 
 ## How it works
 
-`live-viewer` is a Claude Code mod: a plugin whose hooks module watches the engine's events.
+`live-viewer` is a Claude Code mod: a plugin whose hooks module watches the engine's events. It ships as a skill folder. Claude Code loads a folder in `~/.claude/skills` that has `.claude-plugin/plugin.json` as the plugin `live-viewer@skills-dir`, so no marketplace is needed.
 
 - **`turn.step`**: reads the streamed chunks of each model step. It passes every chunk on unchanged and parses the partial JSON of `Write`, `Edit`, and `Bash` inputs as it arrives.
 - **`tool.call`**: marks a call as running and attaches the result once it finishes. The result is returned untouched.
@@ -98,11 +111,17 @@ It never blocks, delays, or changes what Claude does. Updates to the tab are bat
 ## Update and remove
 
 ```bash
-claude plugin update live-viewer@live-viewer
+npx skills update live-viewer -g
 ```
 
 ```bash
-claude plugin uninstall live-viewer@live-viewer
+npx skills remove live-viewer -g
+```
+
+If you installed with `git`, pull and replace `~/.claude/skills/live-viewer` with a fresh copy of `skills/live-viewer`, or remove it with:
+
+```bash
+rm -rf ~/.claude/skills/live-viewer
 ```
 
 ## Development
@@ -112,18 +131,18 @@ git clone https://github.com/moneycode11101-svg/claude-code-live-viewer.git
 ```
 
 ```bash
-claude plugin validate --strict .
+claude plugin validate --strict skills/live-viewer
 ```
 
 ```bash
-claude plugin test .
+claude plugin test skills/live-viewer
 ```
 
-To try a local checkout, start Claude Code with `claude --plugin-dir .` from the repo folder.
+To try a local checkout, start Claude Code with `claude --plugin-dir skills/live-viewer` from the repo folder.
 
 ## Credits
 
-The box layout and the light and dark palettes follow [oh-my-pi](https://github.com/can1357/oh-my-pi) (MIT). See [NOTICE](NOTICE).
+The box layout and the light and dark palettes follow [oh-my-pi](https://github.com/can1357/oh-my-pi) (MIT). See [NOTICE](skills/live-viewer/NOTICE).
 
 ## License
 
