@@ -1,0 +1,3 @@
+# hooks/partial.ts 197행: false 리터럴의 남은 글자 'alse'만 예외로 둔다.
+[default]
+extend-ignore-re = ["'alse'"]
