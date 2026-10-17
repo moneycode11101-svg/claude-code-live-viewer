@@ -8,7 +8,7 @@ import { toDisplay } from './display'
 import { appendText, applyTodos, isHidden, isTodoTool, lineArgs, type Places, parseRaw, RAW_LIMIT, TEXT_LIMIT } from './feed'
 import { feed, initialState, type State } from './partial'
 import { noteClose, noteDraw, noteError, noteFollow, noteOff, noteOpen, notePanes, noteScroll, noteSurfaces, setDebug } from './status'
-import { EN, type Words, wordsOf } from './words'
+import { EN, languageOf, type Words, wordsOf } from './words'
 
 // 최우선은 세션 흐름을 멈추거나 늦추지 않는 것: 조각은 받자마자 그대로 내보내고, 관찰부는 동기로 짧게 돌며
 // $ 호출은 기다리지 않는다. 관찰부가 한 번이라도 던지면 이 세션에서 관찰을 끈다.
@@ -51,9 +51,12 @@ let sentSeq = 0
 let followedSeq = -1
 let places: Places = { cwd: null, home: null }
 let theme: string | null | undefined
-// 설정 값(register가 받는다): 글자 언어와 팔레트.
+// 설정 값(register가 받는다): 글자 언어와 팔레트. auto 언어는 시간대로 먼저 정하고, 로캘 변수를 읽은 뒤 한 번 고친다.
 let words: Words = EN
+let languageChoice: unknown = 'auto'
+let languageReady: Promise<void> | null = null
 let paletteChoice: unknown = 'auto'
+const timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 let isPanePlaced = false
 let isClosedByPerson = false
 let isCommandReady = false
@@ -207,6 +210,16 @@ function followEnd($: EngineInterface): void {
   )
 }
 
+// 탭 제목·명령 설명이 나가기 전에 한 번만 읽는다. 못 읽으면 시간대로 정한 글자를 그대로 쓴다.
+function settleLanguage($: EngineInterface): Promise<void> {
+  languageReady ??= (async () => {
+    if (languageChoice === 'en' || languageChoice === 'ko') return
+    const locale = (await $.env.get('LC_ALL')) || (await $.env.get('LC_MESSAGES')) || (await $.env.get('LANG'))
+    words = wordsOf(languageOf(languageChoice, locale, timeZone()))
+  })().catch(error => noteError($, 'language', error))
+  return languageReady
+}
+
 function openPane($: EngineInterface, from: string): Promise<{ isPlaced: boolean; reason?: string } | null> {
   try {
     return $.ui.open({ id: PANE, title: words.title }).then(
@@ -244,6 +257,7 @@ async function openTabs($: EngineInterface, from: string): Promise<void> {
     noteError($, 'session.surfaces', error)
     return
   }
+  await settleLanguage($)
   if (!isOff && !isPanePlaced && !isClosedByPerson) await openPane($, from)
 }
 
@@ -255,7 +269,7 @@ function prepare($: EngineInterface): void {
     $.env.get('HOME').then(home => (places = { ...places, home: home ?? null }), ignore)
     if (isCommandReady) return
     isCommandReady = true
-    $.command.register({ name: 'live', description: words.command }).catch(error => noteError($, 'command.register', error))
+    void settleLanguage($).then(() => $.command.register({ name: 'live', description: words.command }).catch(error => noteError($, 'command.register', error)))
   } catch (error) {
     noteError($, 'prepare', error)
   }
@@ -347,7 +361,9 @@ async function watchCall<R>($: EngineInterface, id: string | undefined, run: () 
 }
 
 export const register: Register = (on, options) => {
-  words = wordsOf(options.language)
+  languageChoice = options.language
+  languageReady = null
+  words = wordsOf(languageOf(languageChoice, undefined, timeZone()))
   paletteChoice = options.palette
   setDebug(options.debug === true)
   // 화면이 붙어 있을 때만 연다. 다시 띄운 세션은 앱 화면이 붙기 전에 시작해, 그때 열면
@@ -374,6 +390,7 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'live' }, async $ => {
     isClosedByPerson = false
+    await settleLanguage($)
     const result = await openPane($, 'command')
     guard($, () => {
       isDirty = true

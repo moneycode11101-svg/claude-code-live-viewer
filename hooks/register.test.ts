@@ -11,7 +11,7 @@ const PANE_PROPS = { title: '코딩 뷰어', isFocused: false, bodyColumns: 80, 
 const SPINNER_PROPS = { word: 'Working', message: null, suffix: '', mode: 'tool-input' } as const
 const SURFACES = ['terminal', 'desktop', 'mobile', 'vscode'] as const
 
-type World = { sets: View[]; opens: number; closes: string[]; writes: string[]; nextCalls: number; isClosed: boolean; statuses: string[] }
+type World = { sets: View[]; opens: number; titles: string[]; closes: string[]; writes: string[]; nextCalls: number; isClosed: boolean; statuses: string[] }
 type Options = { panes?: UiPane[]; failAt?: number; isPanesBroken?: boolean; opened?: UiOpenResult; surfaces?: { now: ('terminal' | 'desktop')[] }; env?: Record<string, string> }
 
 // 시험 키트의 맨 위 stream.result는 비어 오므로 결과는 생성기의 반환값으로 받는다.
@@ -36,7 +36,7 @@ function inputs(index: number, json: string, size = 5): TurnStepChunk[] {
 
 // 테스트의 on은 플러그인 아래(엔진 자리)에 선다: 조각을 내는 쪽, 패널 목록·열기, state 쓰기, 상태 파일 쓰기.
 function world(on: On, chunks: readonly TurnStepChunk[], options: Options = {}): World {
-  const seen: World = { sets: [], opens: 0, closes: [], writes: [], nextCalls: 0, isClosed: false, statuses: [] }
+  const seen: World = { sets: [], opens: 0, titles: [], closes: [], writes: [], nextCalls: 0, isClosed: false, statuses: [] }
   on('turn.step', async function* () {
     seen.nextCalls += 1
     try {
@@ -53,8 +53,9 @@ function world(on: On, chunks: readonly TurnStepChunk[], options: Options = {}):
     if (options.isPanesBroken) throw new Error('패널 목록 실패')
     return { value: options.panes ?? [PLACED] }
   })
-  on('ui.open', async () => {
+  on('ui.open', async (_engine, e) => {
     seen.opens += 1
+    seen.titles.push(e.title ?? '')
     return { value: options.opened ?? { isPlaced: true } }
   })
   on('ui.close', (_engine, e) => {
@@ -106,7 +107,10 @@ const WRITE: TurnStepChunk[] = [
   { kind: 'stop', stopReason: 'tool_use', usage: null },
 ]
 
-test('조각과 결과를 순서·값 그대로 넘기고, 쓰는 중인 Write를 패널 자리에 싣는다', async ($, on) => {
+// 영어 글자를 보는 시험은 언어를 고정한다. auto는 시간대를 봐서 돌리는 기계마다 다르다.
+const EN = { options: { language: 'en' } } as const
+
+test('조각과 결과를 순서·값 그대로 넘기고, 쓰는 중인 Write를 패널 자리에 싣는다', EN, async ($, on) => {
   const clock = mock.clock(on)
   const seen = world(on, WRITE)
   const { chunks, result } = await drain($.turn.step(STEP))
@@ -209,7 +213,7 @@ test('늦게 온 앞 호출의 input은 표시를 바꾸지 않는다', async ($
   expect(seen.sets.some(view => boxes(view).some(item => item.shown.source.includes('늦은')))).toBe(false)
 })
 
-test('tool.call이 돌면 실행 중, 끝나면 결과(쓴 줄 수·새 파일)로 바꾸고 답은 그대로 돌려준다', async ($, on) => {
+test('tool.call이 돌면 실행 중, 끝나면 결과(쓴 줄 수·새 파일)로 바꾸고 답은 그대로 돌려준다', EN, async ($, on) => {
   const clock = mock.clock(on)
   const seen = world(on, [tool(0, 'Write', 'w-8'), ...inputs(0, JSON.stringify({ file_path: '/tmp/b.ts', content: 'a\nb\n' }))])
   on('tool.call', async () => {
@@ -227,7 +231,7 @@ test('tool.call이 돌면 실행 중, 끝나면 결과(쓴 줄 수·새 파일)�
   expect(window(seen)).toEqual({ source: 'a\nb\n', startLine: 1, earlier: 0, more: 0 })
 })
 
-test('Bash 오류는 실패와 종료 코드, Edit은 실제 줄 번호 diff', async ($, on) => {
+test('Bash 오류는 실패와 종료 코드, Edit은 실제 줄 번호 diff', EN, async ($, on) => {
   const clock = mock.clock(on)
   const chunks: TurnStepChunk[] = [
     tool(0, 'Bash', 'b-9'),
@@ -253,7 +257,7 @@ test('Bash 오류는 실패와 종료 코드, Edit은 실제 줄 번호 diff', a
   expect(window(seen)?.source).toBe('@@ -5,3 +5,3 @@\n a\n-b\n+B\n c')
 })
 
-test('턴이 끝났는데 쓰는 중이던 호출은 중단됨', async ($, on) => {
+test('턴이 끝났는데 쓰는 중이던 호출은 중단됨', EN, async ($, on) => {
   const clock = mock.clock(on)
   const seen = world(on, [tool(0, 'Write', 'w-10'), ...inputs(0, '{"file_path":"/tmp/c.ts","content":"x')])
   await stream($)
@@ -387,7 +391,7 @@ test('새로 그릴 때마다 끝에 붙고, 사람이 위로 굴리면 멈췄�
 
 const LIVE = { command: 'live', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } } as const
 
-test('/live는 코딩 뷰어 탭을 열고 엔진 답을 그대로 알린다', async ($, on) => {
+test('/live는 코딩 뷰어 탭을 열고 엔진 답을 그대로 알린다', EN, async ($, on) => {
   const clock = mock.clock(on)
   const seen = world(on, [])
   expect(await $.command.run(LIVE)).toMatchObject({ text: 'Opened the live viewer tab.' })
@@ -396,7 +400,7 @@ test('/live는 코딩 뷰어 탭을 열고 엔진 답을 그대로 알린다', a
   expect(last(seen)?.seat).toBe('pane')
 })
 
-test('패널이 안 놓였으면 진행 줄 자리로 돌리고, 프롬프트마다 다시 열며, debug면 엔진 답을 상태 파일에 남긴다', { options: { debug: true } }, async ($, on) => {
+test('패널이 안 놓였으면 진행 줄 자리로 돌리고, 프롬프트마다 다시 열며, debug면 엔진 답을 상태 파일에 남긴다', { options: { debug: true, language: 'en' } }, async ($, on) => {
   const clock = mock.clock(on)
   const seen = world(on, [], { opened: { isPlaced: false, reason: '좁다' } })
   expect(await $.command.run(LIVE)).toMatchObject({ text: 'The live viewer tab is not placed yet: 좁다' })
@@ -493,3 +497,13 @@ test('CLAUDE_CONFIG_DIR이 있으면 상태 파일은 그 아래', { options: { 
   expect(seen.writes.length).toBeGreaterThan(0)
   expect(seen.writes.every(path => path === '/cfg/live-viewer/status/test-session.json')).toBe(true)
 })
+
+for (const [name, options, title] of [['auto', {}, '코딩 뷰어'], ['en', EN, 'Live viewer']] as const) {
+  test(`로캘 변수가 ko일 때 language ${name}면 탭 제목은 ${title}`, options, async ($, on) => {
+    const clock = mock.clock(on)
+    const seen = world(on, [], { env: { HOME: '/home/test', LANG: 'ko_KR.UTF-8' } })
+    await $.command.run(LIVE)
+    await clock.advance(40)
+    expect(seen.titles).toEqual([title])
+  })
+}

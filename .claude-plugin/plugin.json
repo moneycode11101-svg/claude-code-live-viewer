@@ -1,6 +1,6 @@
 {
   "name": "live-viewer",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Watch Claude's tool calls live in a side-pane tab: Write, Edit and Bash as boxes with streaming code and diffs, other tools as one line, thinking, answers and the todo list.",
   "author": { "name": "moneycode11101-svg", "url": "https://github.com/moneycode11101-svg" },
   "homepage": "https://github.com/moneycode11101-svg/claude-code-live-viewer",
@@ -9,7 +9,7 @@
   "keywords": ["mod", "pane", "viewer", "tool-calls", "streaming", "diff"],
   "types": "./types/index.d.ts",
   "userConfig": {
-    "language": { "type": "string", "title": "Language", "description": "Language of the tab title and labels", "default": "en", "options": ["en", "ko"] },
+    "language": { "type": "string", "title": "Language", "description": "Language of the tab title and labels. auto: Korean when your locale (LC_ALL, LC_MESSAGES, LANG) is Korean or your time zone is Asia/Seoul, English otherwise", "default": "auto", "options": ["auto", "en", "ko"] },
     "palette": { "type": "string", "title": "Palette", "description": "Box colors. auto: light in the desktop app, follows the theme in the terminal", "default": "auto", "options": ["auto", "light", "dark"] },
     "debug": { "type": "boolean", "title": "Debug status file", "description": "Write a per-session status file under live-viewer/status/ in the Claude config folder", "default": false }
   }

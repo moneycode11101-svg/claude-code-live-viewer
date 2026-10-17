@@ -1,4 +1,4 @@
-// 사용자에게 보이는 글자. 설정 `language`(en 기본, ko)로 고른다. omp에서 온 상자 안 글자(streaming·earlier lines·TODO)는 두 언어 모두 영어로 둔다.
+// 사용자에게 보이는 글자. 설정 `language`(auto 기본, en, ko)로 고른다. omp에서 온 상자 안 글자(streaming·earlier lines·TODO)는 두 언어 모두 영어로 둔다.
 
 export type Words = {
   title: string
@@ -51,4 +51,14 @@ export const KO: Words = {
   denied: '거절됨',
 }
 
-export const wordsOf = (language: unknown): Words => (language === 'ko' ? KO : EN)
+export type Language = 'en' | 'ko'
+
+// auto는 로캘(LC_ALL → LC_MESSAGES → LANG 중 먼저 있는 것)이 ko로 시작하거나 시간대가 Asia/Seoul이면 한국어다.
+// 데스크톱 앱이 띄운 CLI에는 로캘 변수가 없고 Intl 로캘은 en-US로 고정이라(2026-10-17 확인) 시간대도 본다.
+export function languageOf(choice: unknown, locale: string | undefined, timeZone: string | undefined): Language {
+  if (choice === 'en' || choice === 'ko') return choice
+  if (locale?.toLowerCase().startsWith('ko') === true) return 'ko'
+  return timeZone === 'Asia/Seoul' ? 'ko' : 'en'
+}
+
+export const wordsOf = (language: Language): Words => (language === 'ko' ? KO : EN)

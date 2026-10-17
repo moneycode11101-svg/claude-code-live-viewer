@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { Entry } from '../types'
 import { bodyWindow, changeMeta, hunk, patchChange, rowCount, settledEntry, shownOf } from './entry'
-import { KO } from './words'
+import { KO, languageOf } from './words'
 
 const BASE: Entry = { id: 'c1', tool: 'Write', status: 'running', title: '/tmp/a.ts', path: '/tmp/a.ts', kind: 'code', body: '', lastLine: null, meta: '' }
 
@@ -157,5 +157,22 @@ describe('omp식 창(shownOf)', () => {
 
   test('Edit 꼬리는 0인 쪽을 뺀다', () => {
     expect([changeMeta({ text: '', added: 3, removed: 1 }), changeMeta({ text: '', added: 2, removed: 0 }), changeMeta({ text: '', added: 0, removed: 0 })]).toEqual(['[+3 -1]', '[+2]', ''])
+  })
+})
+
+describe('languageOf: language 설정 auto의 판정', () => {
+  test('en·ko를 고르면 그대로', () => {
+    expect(languageOf('en', 'ko_KR.UTF-8', 'Asia/Seoul')).toBe('en')
+    expect(languageOf('ko', 'en_US.UTF-8', 'UTC')).toBe('ko')
+  })
+  test('auto는 로캘이 ko로 시작하거나 시간대가 Asia/Seoul이면 한국어', () => {
+    expect(languageOf('auto', 'ko_KR.UTF-8', 'UTC')).toBe('ko')
+    expect(languageOf('auto', 'en_US.UTF-8', 'Asia/Seoul')).toBe('ko')
+    expect(languageOf('auto', undefined, 'Asia/Seoul')).toBe('ko')
+  })
+  test('auto의 나머지는 영어', () => {
+    expect(languageOf('auto', 'en_US.UTF-8', 'America/New_York')).toBe('en')
+    expect(languageOf('auto', undefined, undefined)).toBe('en')
+    expect(languageOf('auto', 'C', 'UTC')).toBe('en')
   })
 })

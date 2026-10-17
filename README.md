@@ -53,12 +53,12 @@ When the desktop app has not placed the tab yet, the box for the call being writ
 Run `/plugin configure live-viewer@live-viewer` inside Claude Code, or set them when you install:
 
 ```bash
-claude plugin install live-viewer@live-viewer --config language=ko
+claude plugin install live-viewer@live-viewer --config palette=dark
 ```
 
 | Setting | Values | Default |
 |---|---|---|
-| `language` | `en`, `ko` | `en` |
+| `language` | `auto`, `en`, `ko` | `auto`: Korean when your locale (`LC_ALL`, `LC_MESSAGES` or `LANG`) starts with `ko` or your time zone is `Asia/Seoul`, English otherwise |
 | `palette` | `auto`, `light`, `dark` | `auto` (light in the desktop app, follows your theme in the terminal) |
 | `debug` | `true`, `false` | `false`. When on, writes a status file per session to `live-viewer/status/` in your Claude config folder |
 
@@ -120,7 +120,7 @@ claude plugin marketplace add moneycode11101-svg/claude-code-live-viewer
 claude plugin install live-viewer@live-viewer
 ```
 
-두 번째 줄 끝에 `--config language=ko`를 붙이면 탭 제목과 글자가 한국어로 나옵니다. 이미 깔았으면 Claude Code 안에서 `/plugin configure live-viewer@live-viewer`로 바꿉니다. 새 세션을 열면 탭이 뜨고, 닫았으면 `/live`로 다시 엽니다.
+로캘이 한국어이거나 시간대가 서울이면 탭 제목과 글자가 저절로 한국어로 나옵니다. 영어로 쓰려면 두 번째 줄 끝에 `--config language=en`을 붙이고, 이미 깔았으면 Claude Code 안에서 `/plugin configure live-viewer@live-viewer`로 바꿉니다. 새 세션을 열면 탭이 뜨고, 닫았으면 `/live`로 다시 엽니다.
 
 ## Credits
 
