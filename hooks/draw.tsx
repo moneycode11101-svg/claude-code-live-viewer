@@ -12,9 +12,10 @@ const SPIN = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
 const SPIN_FRAME_MS = 120
 
 // omp 설치본의 light·titanium 테마 값. 코드 글자색은 호스트 테마를 따르므로 배경도 테마에 맞춰 고른다.
-// page는 omp 테마의 바탕(export.pageBg, terminal.background)이다.
+// page·text는 omp 테마의 바탕과 글자색(terminal.background·foreground)이다.
 export type Palette = {
   page: string
+  text: string
   pending: string
   done: string
   failed: string
@@ -27,6 +28,7 @@ export type Palette = {
 }
 export const LIGHT: Palette = {
   page: '#f8f8f8',
+  text: '#3b3b3b',
   pending: '#e8e8f0',
   done: '#e8f0e8',
   failed: '#f0e8e8',
@@ -39,6 +41,7 @@ export const LIGHT: Palette = {
 }
 export const TITANIUM: Palette = {
   page: '#151820',
+  text: '#e8ecf4',
   pending: '#0f1216',
   done: '#0f1216',
   failed: '#1a0f10',
@@ -61,6 +64,10 @@ export function paletteOf(choice: unknown, surface: string, theme: string | null
 export type Layout = { surface: string; columns: number; rows: number; palette: Palette; places: Places; words: Words; pageRows: number | null }
 
 const isPending = (entry: Entry) => entry.status === 'streaming' || entry.status === 'running'
+
+// 바탕을 칠한 패널에서는 색 없던 글자도 팔레트 글자색으로 칠한다. 호스트 기본 글자색은 터미널 프로필을 따라
+// /config 테마와 어긋날 수 있다(테마 dark·흰 바탕 프로필이면 검은 글자가 어두운 바탕에 묻힌다). 안 칠한 곳은 호스트 색 그대로.
+const inkOf = (layout: Layout) => (layout.pageRows === null ? undefined : layout.palette.text)
 
 // 한글·한자·전각·이모지는 두 칸을 차지한다.
 function isWide(code: number): boolean {
@@ -177,7 +184,7 @@ function drawRule(els: ElementTable, spans: readonly Span[], layout: Layout): Re
   return (
     <Box flexDirection="row">
       {spans.map((span, i) => (
-        <Text key={`span-${i}`} color={span.color} bold={span.isBold}>
+        <Text key={`span-${i}`} color={span.color ?? inkOf(layout)} bold={span.isBold}>
           {span.text}
         </Text>
       ))}
@@ -227,13 +234,13 @@ export function drawBox(els: ElementTable, entry: Entry, shown: Shown, layout: L
   )
 }
 
-function drawLine(els: ElementTable, item: Extract<Item, { type: 'line' }>, palette: Palette): RenderElement {
+function drawLine(els: ElementTable, item: Extract<Item, { type: 'line' }>, layout: Layout): RenderElement {
   const { Box, Text } = els
   return (
     <Box key={item.id} flexDirection="row" columnGap={1}>
-      <Text bold>{`● ${item.tool}`}</Text>
+      <Text bold color={inkOf(layout)}>{`● ${item.tool}`}</Text>
       {item.args !== '' && (
-        <Text color={palette.dim} wrap="truncate-end">
+        <Text color={layout.palette.dim} wrap="truncate-end">
           {item.args}
         </Text>
       )}
@@ -241,16 +248,20 @@ function drawLine(els: ElementTable, item: Extract<Item, { type: 'line' }>, pale
   )
 }
 
-function drawWords(els: ElementTable, item: Extract<Item, { type: 'text' | 'thinking' }>, palette: Palette): RenderElement {
+// 답은 Markdown으로 그리되, 바탕을 칠한 패널에서는 Markdown이 글자색을 받지 않아(MarkdownProps에 color 없음) 팔레트 글자색의 글로 그린다.
+function drawWords(els: ElementTable, item: Extract<Item, { type: 'text' | 'thinking' }>, layout: Layout): RenderElement {
   const { Box, Markdown, Text } = els
+  const ink = inkOf(layout)
   return (
     <Box key={`${item.type}:${item.id}`} flexDirection="column">
       {item.type === 'thinking' ? (
-        <Text italic color={palette.thinking}>
+        <Text italic color={layout.palette.thinking}>
           {item.text}
         </Text>
-      ) : (
+      ) : ink === undefined ? (
         <Markdown text={item.text} />
+      ) : (
+        <Text color={ink}>{item.text}</Text>
       )}
     </Box>
   )
@@ -258,8 +269,8 @@ function drawWords(els: ElementTable, item: Extract<Item, { type: 'text' | 'thin
 
 function drawItem(els: ElementTable, item: Item, layout: Layout): RenderElement {
   if (item.type === 'box') return drawBox(els, item.entry, item.shown, layout)
-  if (item.type === 'line') return drawLine(els, item, layout.palette)
-  return drawWords(els, item, layout.palette)
+  if (item.type === 'line') return drawLine(els, item, layout)
+  return drawWords(els, item, layout)
 }
 
 // 나무에 보일 할 일 수. 넘으면 진행 중 앞뒤로 이만큼과 `… N more`.
@@ -273,8 +284,9 @@ function todoWindow(todos: readonly Todo[]): { start: number; shown: readonly To
   return { start, shown: todos.slice(start, start + TODO_ROWS) }
 }
 
-function drawTodos(els: ElementTable, todos: readonly Todo[], palette: Palette): RenderElement {
+function drawTodos(els: ElementTable, todos: readonly Todo[], layout: Layout): RenderElement {
   const { Box, Text } = els
+  const { palette } = layout
   const done = todos.filter(todo => todo.status === 'completed').length
   const { start, shown } = todoWindow(todos)
   // 창 위·아래로 접힌 할 일 수.
@@ -291,7 +303,7 @@ function drawTodos(els: ElementTable, todos: readonly Todo[], palette: Palette):
       {above > 0 && <Text color={palette.dim}>{`├─ … ${above} more`}</Text>}
       {shown.map((todo, i) => {
         const isLast = i === shown.length - 1 && below === 0
-        const color = todo.status === 'completed' ? palette.dim : undefined
+        const color = todo.status === 'completed' ? palette.dim : inkOf(layout)
         return (
           <Text key={`todo:${start + i}`}>
             <Text color={palette.accent}>{isLast ? '└─ ' : '├─ '}</Text>
@@ -364,12 +376,12 @@ function drawViewBody(els: ElementTable, view: View, layout: Layout): RenderElem
   return (
     <Box flexDirection="column">
       {fit(view.items, rows, layout.columns).map(item => drawItem(els, item, layout))}
-      {view.todos.length > 0 && drawTodos(els, view.todos, palette)}
+      {view.todos.length > 0 && drawTodos(els, view.todos, layout)}
       {working !== null && (
         <Box key="working" marginTop={1}>
           <Text>
             <Text color={palette.accent}>{`${spinFrame()} `}</Text>
-            <Text>{working}</Text>
+            <Text color={inkOf(layout)}>{working}</Text>
           </Text>
         </Box>
       )}

@@ -165,15 +165,23 @@ test('터미널 패널은 맨 겉 바탕을 팔레트 바탕색으로 칠하고 
   const clock = mock.clock(on, { now: NOW })
   world(on)
   await clock.settle()
-  shown = VIEWS[0] ?? shown
+  const first = VIEWS[0] ?? shown
+  shown = { ...first, items: [...first.items, { type: 'text', id: 't1', text: '**done** 25 lines' }] }
   const dock = await $.ui.mount({ plugin: 'live-viewer', surface: 'terminal', component: 'Pane', requestId: 'live', props: PANE_PROPS })
   expect((await dock.find({ type: 'Box' }))?.props).toMatchObject({ backgroundColor: TITANIUM.page, minHeight: PANE_PROPS.scroll.bodyRows })
+  // 칠한 바탕 위에서는 색 없던 글자(상자 제목)와 답도 팔레트 글자색이다. 답은 Markdown이 색을 못 받아 글로 그린다.
+  expect((await dock.find({ type: 'Text', text: ' Write:' }))?.props.color).toBe(TITANIUM.text)
+  expect((await dock.find({ type: 'Text', text: '**done** 25 lines' }))?.props.color).toBe(TITANIUM.text)
+  expect(await dock.find({ type: 'Markdown' })).toBeUndefined()
   await dock.unmount()
   const inline = await $.ui.mount({ plugin: 'live-viewer', surface: 'terminal', component: 'Pane', requestId: 'live', props: { ...PANE_PROPS, placement: 'inline' } })
   expect((await inline.find({ type: 'Box' }))?.props).toMatchObject({ backgroundColor: TITANIUM.page, minHeight: 0 })
   await inline.unmount()
   const desktop = await $.ui.mount({ plugin: 'live-viewer', surface: 'desktop', component: 'Pane', requestId: 'live', props: PANE_PROPS })
-  expect(JSON.stringify(await desktop.drawn())).not.toContain(LIGHT.page)
+  const drawn = JSON.stringify(await desktop.drawn())
+  expect(drawn).not.toContain(LIGHT.page)
+  expect(drawn).not.toContain(LIGHT.text)
+  expect(await desktop.find({ type: 'Markdown' })).toBeDefined()
   await desktop.unmount()
 })
 
