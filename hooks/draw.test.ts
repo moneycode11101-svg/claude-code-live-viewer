@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On, RenderElement, ThemeKey } from 'claude-code'
 
 import type { Entry, Item, View } from '../types'
-import { cellWidth, LIGHT, TITANIUM, topParts } from './draw'
+import { cellWidth, LIGHT, ruleSvg, TITANIUM, topParts } from './draw'
 import { shownOf } from './entry'
 
 // 색은 테마 키만 쓰고 dimColor는 쓰지 않는다(omp 팔레트 밖 색 금지). Record로 두어 타입의 키가 늘면 tsc가 알린다.
@@ -124,6 +124,8 @@ function colorsOf(node: unknown, found: { colors: Set<string>; dims: number }): 
   for (const [key, value] of Object.entries(record)) {
     if (key === 'dimColor') found.dims += 1
     else if (COLOR_PROPS.includes(key) && value !== undefined) found.colors.add(String(value))
+    // 데스크톱 상자 윗줄·아랫줄은 칸 SVG라 색이 마크업 안에 있다(색 없는 조각의 앱 글자색 .ink는 팔레트 밖이라 따로 본다).
+    else if (key === 'source' && typeof value === 'string' && value.startsWith('<svg')) for (const [, color] of value.matchAll(/(?:fill|stroke)="(#[0-9a-f]{6})"/g)) found.colors.add(String(color))
     else colorsOf(value, found)
   }
 }
@@ -172,6 +174,33 @@ test('윗줄·아랫줄은 한글 경로와 이모지를 두 칸으로 세어 �
   expect(long.title.endsWith('끝.ts')).toBe(true)
   // 두 칸 글자 때문에 한 칸이 남을 수 있다.
   expect(['─╮', '──╮']).toContain(long.fill)
+})
+
+test('데스크톱 칸 SVG는 columns칸 격자에 글자를 놓아 끝 모서리가 마지막 칸에 오고, 늘 슬롯보다 넓게 그려 줄여 맞춘다', () => {
+  const places = { cwd: '/repo', home: '/home/test' }
+  const edit: Entry = { ...entry('k', 'Edit', 'done', 'diff'), title: '/repo/문서/<설계>.md', meta: '[+1]' }
+  for (const columns of [80, 40]) {
+    const parts = topParts(edit, columns, places)
+    const svg = ruleSvg(
+      [{ text: '╭── ', color: LIGHT.rule }, { text: parts.mark, color: LIGHT.success }, { text: ` ${parts.label}`, isBold: true }, { text: ` ${parts.title}${parts.tail}` }, { text: ` ${parts.fill}`, color: LIGHT.rule }],
+      columns,
+    )
+    expect(svg).toContain(`viewBox="0 0 ${columns * 10} 20"`)
+    // 마크업 폭은 칸 수의 두 배 px: 한 칸이 10px보다 작은 슬롯이면 늘 줄여 그린다.
+    expect(svg).toContain(`width="${columns * 20}" height="40"`)
+    // 한글·이모지를 두 칸으로 세어도 끝 모서리 ╮는 마지막 칸(columns-1)에 온다.
+    expect(svg).toContain(`M${(columns - 1) * 10} 10H${(columns - 1) * 10 + 2}Q`)
+    expect(svg).not.toContain('<설계>')
+  }
+  expect(ruleSvg([{ text: '<a&b>' }], 5)).toContain('>&lt;</text>')
+  // 색 없는 조각은 앱의 밝은·어두운 글자색을 따른다.
+  const plain = ruleSvg([{ text: 'ab' }], 2)
+  expect(plain).toContain('<g class="ink">')
+  expect(plain).toContain('@media (prefers-color-scheme:dark)')
+  // 선 글자는 칸 끝까지 잇는 선, 아랫줄 모서리는 위로 올라간다.
+  const bottom = ruleSvg([{ text: '╰──╯', color: LIGHT.rule }], 4)
+  expect(bottom).toContain(`<path d="M5 0V7Q5 10 8 10H10M10 10H20M20 10H30M35 0V7Q35 10 32 10H30" fill="none" stroke="${LIGHT.rule}"`)
+  expect(bottom).not.toContain('<text')
 })
 
 test('할 일 나무는 끝/전체를 달고, 8개를 넘으면 진행 중 근처 8개와 `… N more`, 진행 줄은 activeForm', async ($, on) => {

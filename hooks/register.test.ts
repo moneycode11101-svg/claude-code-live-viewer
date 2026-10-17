@@ -188,7 +188,9 @@ test('진행 줄 자리에는 쓰는 중인 호출만 omp식 상자로 그리고
   // 진행 줄 자리는 대화창 자체라, 그린 트리가 모든 화면 종류에서 통과하는지 본다(못 그리면 mount가 거절한다).
   for (const surface of SURFACES) {
     const drawn = await $.ui.mount({ plugin: 'live-viewer', surface, component: 'Spinner', props: SPINNER_PROPS })
-    expect(await drawn.find({ type: 'Text', text: ' 📁/tmp/s.ts' })).toBeDefined()
+    // 데스크톱 윗줄은 칸 SVG라 글은 alt에 있다.
+    if (surface === 'desktop') expect(String((await drawn.find({ type: 'Svg' }))?.props.alt)).toMatch(/^╭── \S+ Write: 📁\/tmp\/s\.ts .*─╮$/)
+    else expect(await drawn.find({ type: 'Text', text: ' 📁/tmp/s.ts' })).toBeDefined()
     expect((await drawn.find({ type: 'Code' }))?.props).toMatchObject({ source: 'const a = 1\nconst b = 2', startLine: 1, path: '/tmp/s.ts' })
     expect(await drawn.find({ type: 'Text', text: /… \(streaming\)$/ })).toBeDefined()
     expect(await drawn.find({ type: 'Text', text: '엔진 진행 줄' })).toBeDefined()
@@ -284,9 +286,10 @@ test('패널은 흐름을 시간순 상자로 그리고, 쓰는 중인 상자는
   const tall = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 60 } }
   for (const surface of SURFACES) await (await $.ui.mount({ plugin: 'live-viewer', surface, component: 'Pane', requestId: 'live', props: tall })).unmount()
   const drawn = await $.ui.mount({ plugin: 'live-viewer', surface: 'desktop', component: 'Pane', requestId: 'live', props: tall })
-  const titles = (await drawn.findAll({ type: 'Text', text: /^ (pwd|📁\/tmp\/e\.ts|📁\/tmp\/long\.ts)$/ })).map(found => found.text)
-  expect(titles).toEqual([' pwd', ' 📁/tmp/e.ts', ' 📁/tmp/long.ts'])
-  expect(await drawn.find({ type: 'Text', text: ' [+1 -1]' })).toBeDefined()
+  // 데스크톱 윗줄은 칸 SVG라 제목·꼬리는 alt에 있다.
+  const tops = (await drawn.findAll({ type: 'Svg' })).map(found => String(found.props.alt)).filter(alt => alt.startsWith('╭'))
+  expect(tops.map(alt => / (pwd|📁\/tmp\/e\.ts|📁\/tmp\/long\.ts) /.exec(alt)?.[1])).toEqual(['pwd', '📁/tmp/e.ts', '📁/tmp/long.ts'])
+  expect(tops[1]).toContain(' [+1 -1]')
   const codes = await drawn.findAll({ type: 'Code' })
   expect(codes.find(found => found.props.path === '/tmp/long.ts')?.props).toMatchObject({ startLine: 39, wrap: 'wrap' })
   expect(await drawn.find({ type: 'Text', text: '… (38 earlier lines)' })).toBeDefined()

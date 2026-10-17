@@ -7,12 +7,12 @@ import { type Answer, settledEntry, shownOf, streamingEntry } from './entry'
 import { toDisplay } from './display'
 import { appendText, applyTodos, isHidden, isTodoTool, lineArgs, type Places, parseRaw, RAW_LIMIT, TEXT_LIMIT } from './feed'
 import { feed, initialState, type State } from './partial'
-import { noteClose, noteDraw, noteError, noteFollow, noteOff, noteOpen, notePanes, noteScroll, noteSurfaces, setDebug } from './status'
 import { EN, languageOf, type Words, wordsOf } from './words'
 
 // 최우선은 세션 흐름을 멈추거나 늦추지 않는 것: 조각은 받자마자 그대로 내보내고, 관찰부는 동기로 짧게 돌며
 // $ 호출은 기다리지 않는다. 관찰부가 한 번이라도 던지면 이 세션에서 관찰을 끈다.
 // set은 조각마다 하면 엔진 거친 조각당 p95가 6~12ms로 늘어(replay 실측) 33ms에 한 번으로 묶는다.
+// $를 받는 함수는 모두 이 파일에 둔다: Claude Code 2.1.295의 검사기는 $를 다른 파일 함수로 넘기면 mod를 싣지 않는다.
 // 데스크톱은 클라이언트가 패널 자리를 알리기 전에는 패널을 놓지 않아서(2.1.299), 패널이 안 놓이면
 // 대화창 맨 아래 진행 줄(Spinner) 자리에 쓰는 중인 상자를 그린다. 패널은 새로 그릴 때마다 끝에 붙고(데스크톱은 늘어나는
 // 트리를 스스로 따라가지 않는다), 사람이 위로 굴리면 멈췄다가 끝까지 내리거나 새 프롬프트를 치면 다시 따라간다.
@@ -63,6 +63,138 @@ let isCommandReady = false
 let lastSentAt = Number.NEGATIVE_INFINITY
 let isDirty = false
 let timer: Timer | null = null
+
+// 패널이 안 보일 때 원인을 추정 말고 엔진 답으로 가리려고, 설정 `debug`가 켜졌을 때만 세션마다 상태 파일 하나를 바꿔 쓴다:
+// <CLAUDE_CONFIG_DIR 또는 ~/.claude>/live-viewer/status/<세션 id>.json. 바뀔 때만 쓰고, 쓰는 중이면 끝난 뒤 한 번 더 쓴다. 흐름은 기다리지 않는다.
+
+const STATUS_KEEP = 12
+
+type StatusRow = Record<string, unknown>
+
+const status = {
+  v: 1,
+  updated: '',
+  surfaces: null as unknown,
+  opens: [] as StatusRow[],
+  panes: null as unknown,
+  draws: {} as Record<string, StatusRow>,
+  closes: [] as StatusRow[],
+  scroll: null as StatusRow | null,
+  follow: null as StatusRow | null,
+  errors: [] as StatusRow[],
+  off: null as string | null,
+}
+
+let statusTarget: string | null = null
+let isSaving = false
+let isAgain = false
+let isStatusBroken = false
+let isStatusEnabled = false
+
+// register가 설정 값을 받을 때마다 부른다.
+function setDebug(isOn: boolean): void {
+  isStatusEnabled = isOn
+}
+
+const nowIso = () => new Date().toISOString()
+
+function keepLast(rows: StatusRow[], row: StatusRow): void {
+  rows.push(row)
+  if (rows.length > STATUS_KEEP) rows.splice(0, rows.length - STATUS_KEEP)
+}
+
+async function writeStatus($: EngineInterface): Promise<void> {
+  if (statusTarget === null) {
+    const config = await $.env.get('CLAUDE_CONFIG_DIR')
+    const home = await $.env.get('HOME')
+    const base = config ?? (home === undefined ? undefined : `${home}/.claude`)
+    if (base === undefined) throw new Error('neither CLAUDE_CONFIG_DIR nor HOME is set')
+    statusTarget = `${base}/live-viewer/status/${await $.session.id()}.json`
+  }
+  status.updated = nowIso()
+  await $.fs.write(statusTarget, `${JSON.stringify(status, null, 1)}\n`)
+}
+
+function save($: EngineInterface): void {
+  if (!isStatusEnabled || isStatusBroken) return
+  if (isSaving) {
+    isAgain = true
+    return
+  }
+  isSaving = true
+  const run = async () => {
+    try {
+      do {
+        isAgain = false
+        await writeStatus($)
+      } while (isAgain)
+    } catch (error) {
+      // 기록은 진단일 뿐이라 관찰을 끄지 않는다. 한 번 알리고 이 세션에서는 그만 쓴다.
+      isStatusBroken = true
+      Promise.resolve($.ui.log(`live-viewer: could not write the status file (${String(error)})`) as unknown).catch(() => {
+        // 알림까지 실패하면 더 알릴 곳이 없다.
+      })
+    } finally {
+      isSaving = false
+    }
+  }
+  void run()
+}
+
+function noteOpen($: EngineInterface, from: string, result: { isPlaced: boolean; reason?: string } | { error: string }): void {
+  keepLast(status.opens, { at: nowIso(), from, ...result })
+  save($)
+}
+
+function noteSurfaces($: EngineInterface, surfaces: unknown): void {
+  if (JSON.stringify(surfaces) === JSON.stringify(status.surfaces)) return
+  status.surfaces = surfaces
+  save($)
+}
+
+function notePanes($: EngineInterface, panes: unknown): void {
+  if (JSON.stringify(panes) === JSON.stringify(status.panes)) return
+  status.panes = panes
+  save($)
+}
+
+// 그리기 요청이 온 곳과 크기. 같은 값이면 쓰지 않는다(그리기는 잦다).
+function noteDraw($: EngineInterface, component: string, row: StatusRow): void {
+  const before = status.draws[component]
+  if (before !== undefined && JSON.stringify({ ...before, at: '' }) === JSON.stringify({ ...row, at: '' })) return
+  status.draws[component] = { ...row, at: nowIso() }
+  save($)
+}
+
+function noteClose($: EngineInterface, origin: string): void {
+  keepLast(status.closes, { at: nowIso(), origin })
+  save($)
+}
+
+// 엔진 창을 끝에 붙인 결과. 데스크톱이 패널 굴리기를 받는지 보려고 남긴다. 같은 결과면 쓰지 않는다.
+function noteScroll($: EngineInterface, result: { deny?: string }): void {
+  const deny = result.deny ?? null
+  if (status.scroll?.deny === deny) return
+  status.scroll = { at: nowIso(), deny }
+  save($)
+}
+
+// 사람이 패널을 굴려 끝 따라가기가 바뀐 때: 그때의 창 자리와 트리 높이.
+function noteFollow($: EngineInterface, isNowFollowing: boolean, window: { offset: number; bodyRows: number; contentRows: number }): void {
+  if (status.follow?.isFollowing === isNowFollowing) return
+  status.follow = { at: nowIso(), isFollowing: isNowFollowing, ...window }
+  save($)
+}
+
+function noteError($: EngineInterface, where: string, error: unknown): void {
+  keepLast(status.errors, { at: nowIso(), where, error: String(error) })
+  save($)
+}
+
+function noteOff($: EngineInterface, reason: string): void {
+  status.off = reason
+  save($)
+}
 
 // 터미널 팔레트를 고를 /config 테마. 처음 그릴 때 한 번 읽는다(session.start에서 읽으면 첫 그리기에 늦는다).
 async function themeOf($: EngineInterface, surface: string): Promise<string | null> {
@@ -466,7 +598,7 @@ export const register: Register = (on, options) => {
     // 막아(그리기는 읽기만, 2026-10-17 관찰이 꺼진 원인) 다음 차례로 미룬다.
     if (!isPanePlaced) $.clock.after(0, () => guard($, () => setPlaced($, true)))
     const shown = await read($, calls)
-    const layout: Layout = { columns: bodyColumns, rows: Math.min(PANE_ROWS_LIMIT, scroll.bodyRows), palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words }
+    const layout: Layout = { surface: e.surface, columns: bodyColumns, rows: Math.min(PANE_ROWS_LIMIT, scroll.bodyRows), palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words }
     // 새 그림이면 그린 뒤 끝에 붙인다. 그리기 중에는 엔진 호출을 미룬다(위 state.set과 같은 까닭).
     if (isFollowing && followedSeq !== sentSeq) {
       followedSeq = sentSeq
@@ -493,7 +625,7 @@ export const register: Register = (on, options) => {
     if (shown.isOff || shown.seat !== 'spinner' || current?.type !== 'box' || !isPending(current.entry)) return next(e)
     const els = $.ui.resolve(e)
     const { Box } = els
-    const layout: Layout = { columns: e.viewport?.columns ?? SPINNER_COLUMNS, rows: SPINNER_ROWS, palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words }
+    const layout: Layout = { surface: e.surface, columns: e.viewport?.columns ?? SPINNER_COLUMNS, rows: SPINNER_ROWS, palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words }
     const spinner = await next(e)
     return (
       <Box flexDirection="column">

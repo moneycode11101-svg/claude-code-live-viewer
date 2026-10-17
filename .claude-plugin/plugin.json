@@ -1,6 +1,6 @@
 {
   "name": "live-viewer",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Watch Claude's tool calls live in a side-pane tab: Write, Edit and Bash as boxes with streaming code and diffs, other tools as one line, thinking, answers and the todo list.",
   "author": { "name": "moneycode11101-svg", "url": "https://github.com/moneycode11101-svg" },
   "homepage": "https://github.com/moneycode11101-svg/claude-code-live-viewer",

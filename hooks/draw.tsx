@@ -53,8 +53,8 @@ export function paletteOf(choice: unknown, surface: string, theme: string | null
   return surface === 'desktop' || theme?.startsWith('light') === true ? LIGHT : TITANIUM
 }
 
-// 그릴 자리: 줄 폭, 쓸 수 있는 줄 수, 팔레트, 경로를 줄일 곳, 글자.
-export type Layout = { columns: number; rows: number; palette: Palette; places: Places; words: Words }
+// 그릴 자리: 화면, 줄 폭, 쓸 수 있는 줄 수, 팔레트, 경로를 줄일 곳, 글자.
+export type Layout = { surface: string; columns: number; rows: number; palette: Palette; places: Places; words: Words }
 
 const isPending = (entry: Entry) => entry.status === 'streaming' || entry.status === 'running'
 
@@ -111,28 +111,88 @@ export function topParts(entry: Entry, columns: number, places: Places) {
   return { mark, label, title: shownTitle, tail, fill: `${'─'.repeat(fill)}╮` }
 }
 
-function drawTop(els: ElementTable, entry: Entry, layout: Layout): RenderElement {
+// 윗줄·아랫줄의 한 조각. color가 없으면 기본 글자색.
+type Span = { text: string; color?: string; isBold?: boolean }
+
+// 칸 SVG: 한 칸 CELL×ROW, 글자는 칸 가운데, 선 글자는 칸을 끝까지 잇는 선으로 그린다(글꼴마다 선 글자 폭이 달라 끊긴다).
+const CELL = 10
+const ROW = 20
+const BASELINE = 15
+const BEND = 3
+const MONO_FONT = 'ui-monospace, SFMono-Regular, Menlo, monospace'
+// 마크업 폭을 칸 수의 두 배 px로 두어 늘 슬롯보다 넓게, 곧 슬롯 폭에 맞춰 줄여 그리게 한다.
+const MARKUP_SCALE = 2
+// 색이 없는 조각의 글자색: 앱의 밝은·어두운 화면 글자색. 그림 안이라 호스트 글자색을 물려받지 못한다.
+const INK_STYLE = '.ink{fill:#0b0b0b}.ink-line{stroke:#0b0b0b}@media (prefers-color-scheme:dark){.ink{fill:#f0efec}.ink-line{stroke:#f0efec}}'
+
+const HALF = CELL / 2
+const MID = ROW / 2
+const RULE_PATHS: Record<string, (x: number) => string> = {
+  '─': x => `M${x} ${MID}H${x + CELL}`,
+  '╭': x => `M${x + CELL} ${MID}H${x + HALF + BEND}Q${x + HALF} ${MID} ${x + HALF} ${MID + BEND}V${ROW}`,
+  '╮': x => `M${x} ${MID}H${x + HALF - BEND}Q${x + HALF} ${MID} ${x + HALF} ${MID + BEND}V${ROW}`,
+  '╰': x => `M${x + HALF} 0V${MID - BEND}Q${x + HALF} ${MID} ${x + HALF + BEND} ${MID}H${x + CELL}`,
+  '╯': x => `M${x + HALF} 0V${MID - BEND}Q${x + HALF} ${MID} ${x + HALF - BEND} ${MID}H${x}`,
+}
+
+const escapeXml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+// 조각들을 columns칸 격자에 놓은 SVG. 글자 하나가 cellWidth만큼 칸을 차지해 topParts의 칸 셈과 같다.
+export function ruleSvg(spans: readonly Span[], columns: number): string {
+  const width = columns * CELL
+  const parts: string[] = []
+  let cell = 0
+  for (const span of spans) {
+    let path = ''
+    const glyphs: string[] = []
+    for (const char of span.text) {
+      const cells = cellWidth(char)
+      const x = cell * CELL
+      const rule = RULE_PATHS[char]
+      if (rule !== undefined) path += rule(x)
+      else if (char !== ' ') glyphs.push(`<text x="${x + (cells * CELL) / 2}" y="${BASELINE}">${escapeXml(char)}</text>`)
+      cell += cells
+    }
+    const stroke = span.color === undefined ? 'class="ink-line"' : `stroke="${span.color}"`
+    const fill = span.color === undefined ? 'class="ink"' : `fill="${span.color}"`
+    if (path !== '') parts.push(`<path d="${path}" fill="none" ${stroke} stroke-width="1.2"/>`)
+    if (glyphs.length > 0) parts.push(`<g ${fill}${span.isBold === true ? ' font-weight="700"' : ''}>${glyphs.join('')}</g>`)
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width * MARKUP_SCALE}" height="${ROW * MARKUP_SCALE}" viewBox="0 0 ${width} ${ROW}" font-family="${MONO_FONT}" font-size="16" text-anchor="middle"><style>${INK_STYLE}</style>${parts.join('')}</svg>`
+}
+
+// 윗줄·아랫줄은 칸 수로 폭을 채우므로 고정폭이어야 맞는다. 터미널은 늘 고정폭이라 글자 그대로 그린다. 데스크톱 Text는
+// 비례 글꼴이고 고정폭(Text mono)은 Claude Code 2.1.299부터라 데스크톱은 칸 SVG로 그린다. Svg는 마크업이 슬롯보다 넓으면
+// 슬롯 폭에 맞춰 비율대로 줄어(Svg width 문서), 한 칸이 패널 한 칸이 된다.
+function drawRule(els: ElementTable, spans: readonly Span[], layout: Layout): RenderElement {
+  if (layout.surface === 'desktop' && 'Svg' in els) {
+    const { Svg } = els
+    return <Svg source={ruleSvg(spans, layout.columns)} alt={spans.map(span => span.text).join('')} />
+  }
   const { Box, Text } = els
-  const { palette } = layout
-  const parts = topParts(entry, layout.columns, layout.places)
   return (
     <Box flexDirection="row">
-      <Text color={palette.rule} mono>
-        {'╭── '}
-      </Text>
-      <Text color={markColor(entry, palette)} mono>
-        {parts.mark}
-      </Text>
-      <Text weight="bold" mono>{` ${parts.label}`}</Text>
-      <Text mono>{` ${parts.title}`}</Text>
-      {parts.tail !== '' && (
-        <Text color={palette.dim} mono>
-          {parts.tail}
+      {spans.map((span, i) => (
+        <Text key={`span-${i}`} color={span.color} bold={span.isBold}>
+          {span.text}
         </Text>
-      )}
-      <Text color={palette.rule} mono>{` ${parts.fill}`}</Text>
+      ))}
     </Box>
   )
+}
+
+function drawTop(els: ElementTable, entry: Entry, layout: Layout): RenderElement {
+  const { palette } = layout
+  const parts = topParts(entry, layout.columns, layout.places)
+  const spans: Span[] = [
+    { text: '╭── ', color: palette.rule },
+    { text: parts.mark, color: markColor(entry, palette) },
+    { text: ` ${parts.label}`, isBold: true },
+    { text: ` ${parts.title}` },
+    ...(parts.tail === '' ? [] : [{ text: parts.tail, color: palette.dim }]),
+    { text: ` ${parts.fill}`, color: palette.rule },
+  ]
+  return drawRule(els, spans, layout)
 }
 
 function drawCode(els: ElementTable, entry: Entry, shown: Shown): RenderElement | null {
@@ -158,7 +218,7 @@ export function drawBox(els: ElementTable, entry: Entry, shown: Shown, layout: L
         {shown.more > 0 && <Text color={palette.dim}>{`… ${shown.more} more lines`}</Text>}
         {footer !== '' && <Text color={palette.dim}>{`${markOf(entry)} … (${footer})`}</Text>}
       </Box>
-      <Text color={palette.rule} mono>{`╰${'─'.repeat(Math.max(0, columns - 2))}╯`}</Text>
+      {drawRule(els, [{ text: `╰${'─'.repeat(Math.max(0, columns - 2))}╯`, color: palette.rule }], layout)}
     </Box>
   )
 }
@@ -167,7 +227,7 @@ function drawLine(els: ElementTable, item: Extract<Item, { type: 'line' }>, pale
   const { Box, Text } = els
   return (
     <Box key={item.id} flexDirection="row" columnGap={1}>
-      <Text weight="bold">{`● ${item.tool}`}</Text>
+      <Text bold>{`● ${item.tool}`}</Text>
       {item.args !== '' && (
         <Text color={palette.dim} wrap="truncate-end">
           {item.args}
@@ -219,7 +279,7 @@ function drawTodos(els: ElementTable, todos: readonly Todo[], palette: Palette):
   return (
     <Box key="todos" flexDirection="column" marginTop={1}>
       <Text>
-        <Text color={palette.accent} weight="bold">
+        <Text color={palette.accent} bold>
           TODO
         </Text>
         <Text color={palette.dim}>{` · ${done}/${todos.length}`}</Text>
@@ -231,7 +291,7 @@ function drawTodos(els: ElementTable, todos: readonly Todo[], palette: Palette):
         return (
           <Text key={`todo:${start + i}`}>
             <Text color={palette.accent}>{isLast ? '└─ ' : '├─ '}</Text>
-            <Text color={color} weight={todo.status === 'in_progress' ? 'bold' : 'regular'}>{`${TODO_MARK[todo.status]} ${todo.content}`}</Text>
+            <Text color={color} bold={todo.status === 'in_progress'}>{`${TODO_MARK[todo.status]} ${todo.content}`}</Text>
           </Text>
         )
       })}
