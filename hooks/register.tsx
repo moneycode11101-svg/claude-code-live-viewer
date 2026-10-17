@@ -598,7 +598,10 @@ export const register: Register = (on, options) => {
     // 막아(그리기는 읽기만, 2026-10-17 관찰이 꺼진 원인) 다음 차례로 미룬다.
     if (!isPanePlaced) $.clock.after(0, () => guard($, () => setPlaced($, true)))
     const shown = await read($, calls)
-    const layout: Layout = { surface: e.surface, columns: bodyColumns, rows: Math.min(PANE_ROWS_LIMIT, scroll.bodyRows), palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words }
+    // 바탕은 터미널에서만 칠한다(auto 팔레트가 /config 테마를 따라 호스트 글자색과 맞는다). 데스크톱은 앱 밝기를 몰라 칠하면
+    // 다크 앱에서 글자가 묻힌다. 대화 옆에 붙은 패널은 바닥까지 채우고, 프롬프트 위 패널은 그린 만큼만 칠한다.
+    const pageRows = e.surface !== 'terminal' ? null : placement === 'dock' ? scroll.bodyRows : 0
+    const layout: Layout = { surface: e.surface, columns: bodyColumns, rows: Math.min(PANE_ROWS_LIMIT, scroll.bodyRows), palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words, pageRows }
     // 새 그림이면 그린 뒤 끝에 붙인다. 그리기 중에는 엔진 호출을 미룬다(위 state.set과 같은 까닭).
     if (isFollowing && followedSeq !== sentSeq) {
       followedSeq = sentSeq
@@ -625,7 +628,7 @@ export const register: Register = (on, options) => {
     if (shown.isOff || shown.seat !== 'spinner' || current?.type !== 'box' || !isPending(current.entry)) return next(e)
     const els = $.ui.resolve(e)
     const { Box } = els
-    const layout: Layout = { surface: e.surface, columns: e.viewport?.columns ?? SPINNER_COLUMNS, rows: SPINNER_ROWS, palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words }
+    const layout: Layout = { surface: e.surface, columns: e.viewport?.columns ?? SPINNER_COLUMNS, rows: SPINNER_ROWS, palette: paletteOf(paletteChoice, e.surface, await themeOf($, e.surface)), places, words, pageRows: null }
     const spinner = await next(e)
     return (
       <Box flexDirection="column">

@@ -161,6 +161,22 @@ test('그린 트리의 색은 모두 omp 팔레트 값이거나 ThemeKey이고, 
   expect(drawnColors.filter(color => !found.colors.has(color))).toEqual([])
 })
 
+test('터미널 패널은 맨 겉 바탕을 팔레트 바탕색으로 칠하고 옆에 붙으면 바닥까지 채운다. 데스크톱은 칠하지 않는다', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  world(on)
+  await clock.settle()
+  shown = VIEWS[0] ?? shown
+  const dock = await $.ui.mount({ plugin: 'live-viewer', surface: 'terminal', component: 'Pane', requestId: 'live', props: PANE_PROPS })
+  expect((await dock.find({ type: 'Box' }))?.props).toMatchObject({ backgroundColor: TITANIUM.page, minHeight: PANE_PROPS.scroll.bodyRows })
+  await dock.unmount()
+  const inline = await $.ui.mount({ plugin: 'live-viewer', surface: 'terminal', component: 'Pane', requestId: 'live', props: { ...PANE_PROPS, placement: 'inline' } })
+  expect((await inline.find({ type: 'Box' }))?.props).toMatchObject({ backgroundColor: TITANIUM.page, minHeight: 0 })
+  await inline.unmount()
+  const desktop = await $.ui.mount({ plugin: 'live-viewer', surface: 'desktop', component: 'Pane', requestId: 'live', props: PANE_PROPS })
+  expect(JSON.stringify(await desktop.drawn())).not.toContain(LIGHT.page)
+  await desktop.unmount()
+})
+
 test('윗줄·아랫줄은 한글 경로와 이모지를 두 칸으로 세어 정확히 폭을 채우고, 넘치면 경로 앞을 자른다', () => {
   const places = { cwd: '/repo', home: '/home/test' }
   const edit: Entry = { ...entry('k', 'Edit', 'done', 'diff'), title: '/repo/문서/설계.md', meta: '[+1]' }

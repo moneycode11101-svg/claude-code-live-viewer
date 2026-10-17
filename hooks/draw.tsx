@@ -12,7 +12,9 @@ const SPIN = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
 const SPIN_FRAME_MS = 120
 
 // omp 설치본의 light·titanium 테마 값. 코드 글자색은 호스트 테마를 따르므로 배경도 테마에 맞춰 고른다.
+// page는 omp 테마의 바탕(export.pageBg, terminal.background)이다.
 export type Palette = {
+  page: string
   pending: string
   done: string
   failed: string
@@ -24,6 +26,7 @@ export type Palette = {
   error: string
 }
 export const LIGHT: Palette = {
+  page: '#f8f8f8',
   pending: '#e8e8f0',
   done: '#e8f0e8',
   failed: '#f0e8e8',
@@ -35,6 +38,7 @@ export const LIGHT: Palette = {
   error: '#aa5555',
 }
 export const TITANIUM: Palette = {
+  page: '#151820',
   pending: '#0f1216',
   done: '#0f1216',
   failed: '#1a0f10',
@@ -53,8 +57,8 @@ export function paletteOf(choice: unknown, surface: string, theme: string | null
   return surface === 'desktop' || theme?.startsWith('light') === true ? LIGHT : TITANIUM
 }
 
-// 그릴 자리: 화면, 줄 폭, 쓸 수 있는 줄 수, 팔레트, 경로를 줄일 곳, 글자.
-export type Layout = { surface: string; columns: number; rows: number; palette: Palette; places: Places; words: Words }
+// 그릴 자리: 화면, 줄 폭, 쓸 수 있는 줄 수, 팔레트, 경로를 줄일 곳, 글자, 바탕을 칠할 최소 줄 수(null이면 안 칠함).
+export type Layout = { surface: string; columns: number; rows: number; palette: Palette; places: Places; words: Words; pageRows: number | null }
 
 const isPending = (entry: Entry) => entry.status === 'streaming' || entry.status === 'running'
 
@@ -336,7 +340,20 @@ function fit(items: readonly Item[], rows: number, columns: number): readonly It
 }
 
 // 패널 전체: 흐름, 할 일 나무, 진행 줄. 나무와 진행 줄 자리를 먼저 빼고 남는 줄에 흐름을 채운다.
+// 패널 본문 전체. 맨 겉 바탕은 omp처럼 팔레트 바탕색(page)으로 칠한다: 상자 바탕은 그보다 어둡고(밝고) 선은 그 반대라,
+// 안 칠하면 호스트 바탕(다크 테마의 검정)에 상자와 선이 묻힌다. pageRows가 null이면 칠하지 않는다.
 export function drawView(els: ElementTable, view: View, layout: Layout): RenderElement {
+  const body = drawViewBody(els, view, layout)
+  if (layout.pageRows === null) return body
+  const { Box } = els
+  return (
+    <Box flexDirection="column" backgroundColor={layout.palette.page} minHeight={layout.pageRows}>
+      {body}
+    </Box>
+  )
+}
+
+function drawViewBody(els: ElementTable, view: View, layout: Layout): RenderElement {
   const { Box, Text } = els
   const { palette, words } = layout
   if (view.isOff) return <Text color={palette.dim}>{words.off}</Text>
