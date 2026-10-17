@@ -8,10 +8,9 @@ A Claude Code mod that streams every tool call into a side-pane tab: files line 
 
 [![test](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml/badge.svg)](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code 2.1.302](https://img.shields.io/badge/Claude%20Code-2.1.302-d97757.svg)](#requirements)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
-  <img src="docs/hero-light.png" width="720" alt="The live viewer tab: Claude's thinking in italics, Read and Grep as one-line entries, an Edit box with a diff, a Bash box with test output, a Write box streaming the last twelve lines of a test file, and a todo tree with the current step">
-</picture>
+<img src="docs/demo.gif" width="880" alt="Demo: Claude writes a rate limiter and its tests while the Live viewer tab on the right streams each file line by line, shows the edit as a diff, runs the tests and ticks off the todo list">
+
+<sub>A sample session re-created for this page. Nothing on it comes from a real project.</sub>
 
 [Install](#install) · [What you see](#what-you-see) · [Settings](#settings) · [How it works](#how-it-works) · [한국어](#한국어)
 
@@ -34,6 +33,13 @@ claude plugin install live-viewer@live-viewer
 Start a new Claude Code session. The **Live viewer** tab opens by itself. If you close it, `/live` brings it back.
 
 ## What you see
+
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
+  <img src="docs/hero-light.png" width="560" alt="The live viewer tab: Claude's thinking in italics, Read and Grep as one-line entries, an Edit box with a diff, a Bash box with test output, a Write box streaming the last twelve lines of a test file, and a todo tree with the current step">
+</picture>
+</p>
 
 | Call | Shown as |
 |---|---|
