@@ -1,5 +1,7 @@
 <div align="center">
 
+**English** · [한국어](README.ko.md)
+
 # live-viewer
 
 **See what Claude Code is writing, while it writes it.**
@@ -12,7 +14,7 @@ A Claude Code mod that streams every tool call into a side-pane tab: files line 
 
 <sub>A sample session re-created for this page. Nothing on it comes from a real project.</sub>
 
-[Install](#install) · [What you see](#what-you-see) · [Settings](#settings) · [How it works](#how-it-works) · [한국어](#한국어)
+[Install](#install) · [What you see](#what-you-see) · [Settings](#settings) · [How it works](#how-it-works)
 
 </div>
 
@@ -113,20 +115,6 @@ claude plugin test .
 ```
 
 To try a local checkout, start Claude Code with `claude --plugin-dir .` from the repo folder.
-
-## 한국어
-
-Claude Code가 도구를 부르는 모습을 옆 패널 탭에 실시간으로 보여 주는 mod입니다. 파일이 한 줄씩 써지는 모습, 고치는 부분의 diff, 명령과 그 출력이 생각·할 일 목록과 함께 한 줄기로 찍힙니다.
-
-```bash
-claude plugin marketplace add moneycode11101-svg/claude-code-live-viewer
-```
-
-```bash
-claude plugin install live-viewer@live-viewer
-```
-
-로캘이 한국어이거나 시간대가 서울이면 탭 제목과 글자가 저절로 한국어로 나옵니다. 영어로 쓰려면 두 번째 줄 끝에 `--config language=en`을 붙이고, 이미 깔았으면 Claude Code 안에서 `/plugin configure live-viewer@live-viewer`로 바꿉니다. 새 세션을 열면 탭이 뜨고, 닫았으면 `/live`로 다시 엽니다.
 
 ## Credits
 
