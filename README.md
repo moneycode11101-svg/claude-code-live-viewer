@@ -12,7 +12,7 @@ It streams every Claude Code tool call into a side-pane tab in real time.
 2\. If you're a working developer who likes the official Claude Code app, it's great for peeking into the code under the hood.<br>
 3\. It's pretty.
 
-[![test](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml/badge.svg)](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code 2.1.302](https://img.shields.io/badge/Claude%20Code-2.1.302-d97757.svg)](#requirements)
+[![test](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml/badge.svg)](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code 2.1.295–2.1.302](https://img.shields.io/badge/Claude%20Code-2.1.295%E2%80%932.1.302-d97757.svg)](#requirements)
 
 <img src="docs/demo.gif" width="880" alt="Demo: Claude writes a rate limiter and its tests while the Live viewer tab on the right streams each file line by line, shows the edit as a diff, runs the tests, and ticks off the todo list">
 
@@ -79,9 +79,10 @@ claude plugin install live-viewer@live-viewer --config palette=dark
 | | Status |
 |---|---|
 | Claude Code 2.1.302, macOS desktop app | Tested (2026-10-17) |
-| Claude Code in a terminal | Not tested yet |
+| Claude Code 2.1.295 and 2.1.299, macOS desktop app | Tested with `claude plugin test` and a load check (2026-10-17) |
+| Claude Code 2.1.302 in a terminal, macOS | Tested (2026-10-17): the tab docks beside the transcript |
 | Linux, Windows | Not tested yet |
-| Claude Code older than 2.1.302 | Not tested. Mods are new and their API changes between releases |
+| Claude Code older than 2.1.295 | Not tested. Mods are new and their API changes between releases |
 | `claude -p` and other headless runs | Nothing to show, so no tab opens |
 
 ## How it works

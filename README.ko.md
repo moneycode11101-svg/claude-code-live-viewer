@@ -12,7 +12,7 @@ Claude Code의 도구 호출을 옆 패널 탭에 실시간으로 스트리밍�
 2\. 당신이 현직 개발자인데 Claude Code 공식 앱을 좋아한다면, 코드 내부를 들여다볼 수 있어서 좋습니다.<br>
 3\. 예쁩니다.
 
-[![test](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml/badge.svg)](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code 2.1.302](https://img.shields.io/badge/Claude%20Code-2.1.302-d97757.svg)](#지원-범위)
+[![test](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml/badge.svg)](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code 2.1.295–2.1.302](https://img.shields.io/badge/Claude%20Code-2.1.295%E2%80%932.1.302-d97757.svg)](#지원-범위)
 
 <img src="docs/demo.gif" width="880" alt="시연: Claude가 요청 제한기와 그 테스트를 작성하는 동안 오른쪽 Live viewer 탭에 파일이 한 줄씩 써지고, 수정 사항이 diff로 표시되고, 테스트가 실행되며, 할 일 목록이 하나씩 완료된다">
 
@@ -79,9 +79,10 @@ claude plugin install live-viewer@live-viewer --config palette=dark
 | 환경 | 상태 |
 |---|---|
 | Claude Code 2.1.302, macOS 데스크톱 앱 | 테스트 완료 (2026-10-17) |
-| 터미널 환경의 Claude Code | 아직 테스트 안 함 |
+| Claude Code 2.1.295·2.1.299, macOS 데스크톱 앱 | `claude plugin test`와 로드 확인으로 테스트 완료 (2026-10-17) |
+| 터미널의 Claude Code 2.1.302, macOS | 테스트 완료 (2026-10-17): 탭이 대화 옆에 붙어 열립니다 |
 | Linux, Windows | 아직 테스트 안 함 |
-| 2.1.302 이전 버전의 Claude Code | 테스트 안 함. mod는 새로운 기능이라 버전마다 API가 바뀝니다 |
+| 2.1.295 이전 버전의 Claude Code | 테스트 안 함. mod는 새로운 기능이라 버전마다 API가 바뀝니다 |
 | `claude -p` 등 헤드리스(headless) 실행 | 표시할 화면이 없으므로 탭을 열지 않습니다 |
 
 ## 작동 방식
