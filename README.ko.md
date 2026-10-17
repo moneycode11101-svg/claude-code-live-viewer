@@ -8,9 +8,9 @@
 
 Claude Code의 도구 호출을 옆 패널 탭에 실시간으로 스트리밍해 줍니다.
 
-1. 당신이 바이브 코더라면, 코딩 기분을 낼 때 좋습니다.
-2. 당신이 현직 개발자인데 Claude Code 공식 앱을 좋아한다면, 코드 내부를 들여다볼 수 있어서 좋습니다.
-3. 예쁩니다.
+1\. 당신이 바이브 코더라면, 코딩 기분을 낼 때 좋습니다.<br>
+2\. 당신이 현직 개발자인데 Claude Code 공식 앱을 좋아한다면, 코드 내부를 들여다볼 수 있어서 좋습니다.<br>
+3\. 예쁩니다.
 
 [![test](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml/badge.svg)](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code 2.1.302](https://img.shields.io/badge/Claude%20Code-2.1.302-d97757.svg)](#지원-범위)
 

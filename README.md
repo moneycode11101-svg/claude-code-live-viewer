@@ -8,9 +8,9 @@
 
 It streams every Claude Code tool call into a side-pane tab in real time.
 
-1. If you're a vibe coder, it's great for getting in the coding mood.
-2. If you're a working developer who likes the official Claude Code app, it's great for peeking into the code under the hood.
-3. It's pretty.
+1\. If you're a vibe coder, it's great for getting in the coding mood.<br>
+2\. If you're a working developer who likes the official Claude Code app, it's great for peeking into the code under the hood.<br>
+3\. It's pretty.
 
 [![test](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml/badge.svg)](https://github.com/moneycode11101-svg/claude-code-live-viewer/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code 2.1.302](https://img.shields.io/badge/Claude%20Code-2.1.302-d97757.svg)](#requirements)
 
